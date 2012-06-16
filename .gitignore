@@ -29,8 +29,4 @@ RCSLOG
 SCCS
 _$*
 bin
-bin
-bin/classes.dex
-bin/jarlist.cache
-bin/resources.ap_
-gen/com/blogspot/comolog/tactrance
+gen
