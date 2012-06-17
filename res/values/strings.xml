@@ -14,8 +14,9 @@
     <string name="label_ip">Set the IP address of the server</string>
     <string name="app_name">Tactrance</string>
     <string name="button_label_set">Connect</string>
-    <string name="port">7770</string>
+    <string name="outgoing_port">7770</string>
     <string name="label_port">Port</string>
-    <string name="local_port">7771</string>
+    <string name="incomming_port">7771</string>
+    <string name="ckeck_wifi_state">Wi-Fi connection is disabled</string>
 
 </resources>

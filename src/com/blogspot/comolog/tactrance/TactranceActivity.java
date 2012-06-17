@@ -17,21 +17,23 @@ import java.net.SocketAddress;
 import de.sciss.net.OSCClient;
 import de.sciss.net.OSCListener;
 import de.sciss.net.OSCMessage;
-import de.sciss.net.OSCPacket;
 import de.sciss.net.OSCServer;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.res.Resources;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Vibrator;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 public class TactranceActivity extends Activity {
     /** Called when the activity is first created. */
@@ -46,15 +48,16 @@ public class TactranceActivity extends Activity {
 		final EditText et = (EditText)findViewById(R.id.editText1);
 		et.setText(ps);
 
-		String p = getString(R.string.port);
-		final int port = Integer.parseInt(p);
+		String outp = getString(R.string.outgoing_port);
+		mOutgoingPort = Integer.parseInt(outp);
+		
+		String inp = getString(R.string.incomming_port);
+		mIncommingPort = Integer.parseInt(inp);
 
 		final Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-		
+				
 		try {
-			String localPort = getString(R.string.local_port);
-			int lp = Integer.parseInt(localPort);
-			mOscServer = OSCServer.newUsing(OSCClient.UDP, lp);
+			mOscServer = OSCServer.newUsing(OSCClient.UDP, mIncommingPort);
 			mOscServer.addOSCListener(new OSCListener() {
 
 				@Override
@@ -66,8 +69,8 @@ public class TactranceActivity extends Activity {
 			});
 			mOscServer.start();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+        	if (BuildConfig.DEBUG)
+        		e1.printStackTrace();
 		}
 		
 		try {
@@ -80,11 +83,11 @@ public class TactranceActivity extends Activity {
 //				}
 //			});
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+        	if (BuildConfig.DEBUG)
+        		e1.printStackTrace();
 		}
 		
-		connect(ps, port);
+		connect(ps, mOutgoingPort);
 		
         Button b = (Button)findViewById(R.id.button1);
         b.setOnClickListener(new OnClickListener() {
@@ -96,7 +99,7 @@ public class TactranceActivity extends Activity {
 					Editor e = pref.edit();
 					e.putString(KEY_ADDRESS, s);
 					e.commit();
-					connect(s, port);
+					connect(s, mOutgoingPort);
 				}
 			}
         	
@@ -112,8 +115,8 @@ public class TactranceActivity extends Activity {
 					try {
 						mOscClient.send(msg);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+			        	if (BuildConfig.DEBUG)
+			        		e.printStackTrace();
 					}
 				}
 				return true;
@@ -121,8 +124,40 @@ public class TactranceActivity extends Activity {
         });
     }
     
+    private boolean checkWifiState() {
+    	WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
+    	int wifiState = wifiManager.getWifiState();
+    	switch (wifiState) {
+    	case WifiManager.WIFI_STATE_DISABLING:
+    	    Log.v("WifiState", "WIFI_STATE_DISABLING");
+    	    break;
+    	case WifiManager.WIFI_STATE_DISABLED:
+    	    Log.v("WifiState", "WIFI_STATE_DISABLED");
+    	    break;
+    	case WifiManager.WIFI_STATE_ENABLING:
+    	    Log.v("WifiState", "WIFI_STATE_ENABLING");
+    	    break;
+    	case WifiManager.WIFI_STATE_ENABLED:
+    	    Log.v("WifiState", "WIFI_STATE_ENABLED");
+    	    break;
+    	case WifiManager.WIFI_STATE_UNKNOWN:
+    	    Log.v("WifiState", "WIFI_STATE_UNKNOWN");
+    	    break;
+    	}
+    	
+    	return wifiState == WifiManager.WIFI_STATE_ENABLED;
+    }
+    
     private boolean connect(String s, int port) {
-		if (mOscClient != null) {
+		if (!checkWifiState()) {
+			try {
+				Toast.makeText(this, R.string.ckeck_wifi_state, Toast.LENGTH_SHORT).show();
+			} catch (Resources.NotFoundException e) {
+				if (BuildConfig.DEBUG)
+					e.printStackTrace();
+			}
+		}
+    	if (mOscClient != null) {
 			mOscClient.setTarget(new InetSocketAddress(s, port));
 			try {
 				if (mOscClient.isConnected())
@@ -138,25 +173,35 @@ public class TactranceActivity extends Activity {
 		            ((ipAddress >> 16) & 0xFF) + "." +
 		            ((ipAddress >> 24) & 0xFF);
 				
-				OSCMessage msg = new OSCMessage( "/ip", new Object[] {localIpAddr, getString(R.string.local_port)});
+				OSCMessage msg = new OSCMessage( "/ip", new Object[] {localIpAddr, String.valueOf(mIncommingPort)});
 				try {
 					mOscClient.send(msg);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+		        	if (BuildConfig.DEBUG)
+		        		e.printStackTrace();
 				}				
 				
 				return true;
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+	        	if (BuildConfig.DEBUG)
+	        		e1.printStackTrace();
 			}
 		}
 		return false;
     }
-    
+
+	@Override
+	protected void onDestroy() {
+		//-------
+		//-------
+		super.onDestroy();
+	}
+
     private static final String KEY = "Tactrance";
     private static final String KEY_ADDRESS = "Addr";
     private OSCServer mOscServer;
-    private OSCClient mOscClient;    
+    private OSCClient mOscClient;
+    
+    private int mIncommingPort;
+    private int mOutgoingPort;
 }
