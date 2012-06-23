@@ -7,7 +7,8 @@ Setup
 -----
 
 ### PC
-* Launch OscServerForTactileFeedback.pde on your Processing. And run it.
+* Launch OscServerForTactileFeedback.pde on your Processing.
+* Run it.
 
 ### Android
 * Turn on the Wi-Fi.
