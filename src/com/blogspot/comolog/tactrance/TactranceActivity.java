@@ -108,10 +108,15 @@ public class TactranceActivity extends Activity {
     
     @Override
 	protected void onResume() {
+		TextView tv = (TextView)findViewById(R.id.textViewIp);
+    	
 		if (checkWifiState()) {
+			tv.setText(getIpAddress());
 			if (mOscServer == null)
 				mOscServer = createServer(mIncommingPort);
-		}
+		} else
+			tv.setText(R.string.wifi_is_off);
+			
 		super.onResume();
 	}
 
@@ -218,6 +223,8 @@ public class TactranceActivity extends Activity {
 	}
 
 	private String getIpAddress() {
+		if (!checkWifiState())
+			return "";
         WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
         WifiInfo wifiInfo = wifiManager.getConnectionInfo();
         int ipAddress = wifiInfo.getIpAddress();
