@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright (c) 2012 Akihiro Komori.
-  All rights reserved. This program and the accompanying materials
-  are made available under the terms of the GNU Public License v2.0
-  which accompanies this distribution, and is available at
-  http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+  Copyright 2012 Akihiro Komori
   
-  Contributors:
-      Akihiro Komori - initial API and implementation
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  
+    http://www.apache.org/licenses/LICENSE-2.0
+  
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 -->
 <resources>
 
@@ -19,5 +24,6 @@
     <string name="incomming_port">7771</string>
     <string name="ckeck_wifi_state">Wi-Fi connection is disabled</string>
     <string name="wifi_is_off">Please turn on Wi-Fi</string>
+    <string name="hint_target_ip">Please enter an IP address of the opposit side</string>
 
 </resources>
