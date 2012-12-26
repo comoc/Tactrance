@@ -21,7 +21,7 @@ Use
 
 * Click the display window of the Processing, then the Android will vibrate.
 
-Acknowledgment
+Acknowledgement
 ---
 This application is using [Java OSC].
 See file LICENSE for more information.
