@@ -20,3 +20,10 @@ Use
 ---
 
 * Click the display window of the Processing, then the Android will vibrate.
+
+Acknowledgment
+---
+This application is using [Java OSC].
+See file LICENSE for more information.
+
+[Java OSC]: http://www.illposed.com/software/javaosc.html "Illposed Software — Java OSC"
