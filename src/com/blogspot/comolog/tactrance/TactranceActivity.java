@@ -21,13 +21,20 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Vibrator;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -55,10 +62,9 @@ public class TactranceActivity extends Activity {
 		final EditText et = (EditText) findViewById(R.id.editText1);
 		et.setText(targetAddress);
 
-		final TextView tv = (TextView) findViewById(R.id.textViewIp);
-		tv.setText(getIpAddress());
-
 		mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+
+		mHandler = new Handler();
 
 		// String outp = getString(R.string.outgoing_port);
 		// mOutgoingPortDefault = Integer.parseInt(outp);
@@ -120,38 +126,60 @@ public class TactranceActivity extends Activity {
 			}
 		});
 
-		View v = findViewById(R.id.view1);
-		v.setOnTouchListener(new OnTouchListener() {
+		mView = findViewById(R.id.view1);
+		mView.setOnTouchListener(new OnTouchListener() {
 
 			@Override
 			public boolean onTouch(View v, MotionEvent event) {
-				if (event.getAction() == MotionEvent.ACTION_DOWN) {
+				float width = mView.getWidth();
+				float height = mView.getHeight();
+				int action = event.getAction();
+				if (action == MotionEvent.ACTION_DOWN
+						|| action == MotionEvent.ACTION_MOVE
+						|| action == MotionEvent.ACTION_UP) {
 					if (mOscOut == null)
 						return false;
 
 					try {
 						if (mOscOut != null) {
 							ArrayList<Object> args = new ArrayList<Object>();
-							args.add("");
+							args.add(event.getX() / width);
+							args.add(event.getY() / height);
 							OSCMessage m = new OSCMessage(OSC_ADDRESS_TOUCH,
 									args);
 							mOscOut.send(m);
 						}
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 
 				}
+
+				mGestureDetector.onTouchEvent(event);
+
 				return true;
 			}
 		});
 
+		mAccels = new float[3];
+		mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null) {
+			mSensor = mSensorManager
+					.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		}
+
+		mGestureDetector = new GestureDetector(this, mOnGestureListener);
 	}
 
 	@Override
 	protected void onResume() {
 		super.onResume();
+
+		final TextView tv = (TextView) findViewById(R.id.textViewIp);
+		tv.setText(getIpAddress());
+
+		mSensorManager.registerListener(mSensorEventListener, mSensor,
+				SensorManager.SENSOR_DELAY_NORMAL);
 
 		// OSC Resume
 		if (mOscIn != null)
@@ -162,6 +190,8 @@ public class TactranceActivity extends Activity {
 	@Override
 	protected void onPause() {
 		super.onPause();
+
+		mSensorManager.unregisterListener(mSensorEventListener, mSensor);
 
 		// OSC Pause
 		if (mOscIn != null)
@@ -176,20 +206,6 @@ public class TactranceActivity extends Activity {
 			mOscIn.close();
 		super.onStop();
 	}
-
-	// @Override
-	// protected void onResume() {
-	// TextView tv = (TextView) findViewById(R.id.textViewIp);
-	//
-	// if (checkWifiState()) {
-	// tv.setText(getIpAddress());
-	// if (mOscServer == null)
-	// mOscServer = createServer(mIncommingPort);
-	// } else
-	// tv.setText(R.string.wifi_is_off);
-	//
-	// super.onResume();
-	// }
 
 	private boolean checkWifiState() {
 		WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
@@ -214,87 +230,6 @@ public class TactranceActivity extends Activity {
 
 		return wifiManager.isWifiEnabled();
 	}
-
-	// private OSCServer createServer(int port) {
-	//
-	// OSCServer s = null;
-	// try {
-	// s = OSCServer.newUsing(OSCClient.UDP, port);
-	// } catch (IOException e) {
-	// // TODO Auto-generated catch block
-	// e.printStackTrace();
-	// }
-	//
-	// if (s == null)
-	// return null;
-	//
-	// try {
-	// s.addOSCListener(mOscListener);
-	// s.start();
-	// } catch (IOException e1) {
-	// if (BuildConfig.DEBUG)
-	// e1.printStackTrace();
-	// s.dispose();
-	// s = null;
-	// }
-	// return s;
-	// }
-	//
-	// private OSCClient createClient(String s, int port, boolean isTellingPort)
-	// {
-	// if (!checkWifiState()) {
-	// try {
-	// Toast.makeText(this, R.string.ckeck_wifi_state,
-	// Toast.LENGTH_SHORT).show();
-	// } catch (Resources.NotFoundException e) {
-	// if (BuildConfig.DEBUG)
-	// e.printStackTrace();
-	// }
-	// return null;
-	// }
-	//
-	// OSCClient c;
-	// try {
-	// c = OSCClient.newUsing(OSCClient.UDP);
-	// } catch (IOException e1) {
-	// if (BuildConfig.DEBUG)
-	// e1.printStackTrace();
-	// return null;
-	// }
-	//
-	// c.setTarget(new InetSocketAddress(s, port));
-	// try {
-	// c.start();
-	// String localIpAddr = getIpAddress();
-	// if (isTellingPort) {
-	// OSCMessage msg = new OSCMessage("/ip", new Object[] {
-	// localIpAddr, String.valueOf(mIncommingPort) });
-	// try {
-	// c.send(msg);
-	// } catch (IOException e) {
-	// if (BuildConfig.DEBUG)
-	// e.printStackTrace();
-	// c.dispose();
-	// c = null;
-	// }
-	// }
-	// } catch (IOException e1) {
-	// if (BuildConfig.DEBUG)
-	// e1.printStackTrace();
-	// c.dispose();
-	// c = null;
-	// }
-	// return c;
-	// }
-	//
-	// @Override
-	// protected void onDestroy() {
-	// if (mOscClient != null)
-	// mOscClient.dispose();
-	// if (mOscServer != null)
-	// mOscServer.dispose();
-	// super.onDestroy();
-	// }
 
 	private String getIpAddress() {
 		if (!checkWifiState())
@@ -321,9 +256,17 @@ public class TactranceActivity extends Activity {
 
 	private Vibrator mVibrator;
 
-	private static final String OSC_ADDRESS_TOUCH = "/touch";
+	private View mView;
 
-	private static final int IO_PORT = 7770;
+	private static final String OSC_ADDRESS_TOUCH = "/touch";
+	private static final String OSC_ADDRESS_ACCEL = "/accel";
+	private static final String OSC_ADDRESS_SINGLE_TAP = "/singleTap";
+	private static final String OSC_ADDRESS_DOUBLE_TAP = "/doubleTap";
+	private static final String OSC_ADDRESS_LONG_PRESS = "/longPress";
+	private static final String OSC_ADDRESS_FLING = "/fling";
+	private static final String OSC_ADDRESS_SCROLL = "/scroll";
+
+	private static final int IO_PORT = 7777;
 
 	private static final String TAG = "TactranceActivity";
 
@@ -335,6 +278,213 @@ public class TactranceActivity extends Activity {
 				if (message.getAddress().equals(OSC_ADDRESS_TOUCH))
 					mVibrator.vibrate(50);
 			}
+		}
+	};
+
+	private SensorManager mSensorManager;
+	private Sensor mSensor;
+	private SensorEventListener mSensorEventListener = new SensorEventListener() {
+
+		@Override
+		public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		}
+
+		@Override
+		public void onSensorChanged(SensorEvent event) {
+			if (event.sensor == mSensor) {
+
+				mAccels[0] = event.values[0];
+				mAccels[1] = event.values[1];
+				mAccels[2] = event.values[2];
+				mHandler.post(mRunnable);
+			}
+		}
+	};
+
+	private Runnable mRunnable = new Runnable() {
+
+		@Override
+		public void run() {
+			// synchronized (TactranceActivity.this) {
+			// try {
+			// if (mOscOut != null) {
+			// ArrayList<Object> args = new ArrayList<Object>();
+			// args.add(mAccels[0]);
+			// args.add(mAccels[1]);
+			// args.add(mAccels[2]);
+			// OSCMessage m = new OSCMessage(OSC_ADDRESS_ACCEL, args);
+			// mOscOut.send(m);
+			// }
+			// } catch (IOException e) {
+			// e.printStackTrace();
+			// }
+			// }
+		}
+	};
+
+	private Handler mHandler;
+	private float[] mAccels;
+
+	private GestureDetector mGestureDetector;
+	private GestureDetector.SimpleOnGestureListener mOnGestureListener = new GestureDetector.SimpleOnGestureListener() {
+
+		@Override
+		public boolean onDoubleTap(MotionEvent event) {
+			// Toast.makeText(TactranceActivity.this, "onDoubleTap",
+			// Toast.LENGTH_SHORT).show();
+
+			synchronized (TactranceActivity.this) {
+				try {
+					if (mOscOut != null) {
+						float width = mView.getWidth();
+						float height = mView.getHeight();
+						ArrayList<Object> args = new ArrayList<Object>();
+						args.add(event.getX() / width);
+						args.add(event.getY() / height);
+						OSCMessage m = new OSCMessage(OSC_ADDRESS_DOUBLE_TAP,
+								args);
+						mOscOut.send(m);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
+			return super.onDoubleTap(event);
+		}
+
+		@Override
+		public boolean onDoubleTapEvent(MotionEvent event) {
+			// Toast.makeText(TactranceActivity.this, "onDoubleTapEvent",
+			// Toast.LENGTH_SHORT).show();
+			return super.onDoubleTapEvent(event);
+		}
+
+		@Override
+		public boolean onDown(MotionEvent event) {
+			// Toast.makeText(TactranceActivity.this, "onDown",
+			// Toast.LENGTH_SHORT)
+			// .show();
+			return super.onDown(event);
+		}
+
+		@Override
+		public boolean onFling(MotionEvent event1, MotionEvent event2,
+				float velocityX, float velocityY) {
+			// Toast.makeText(TactranceActivity.this, "onFling",
+			// Toast.LENGTH_SHORT).show();
+
+			synchronized (TactranceActivity.this) {
+				try {
+					if (mOscOut != null) {
+						ArrayList<Object> args = new ArrayList<Object>();
+						args.add(velocityX);
+						args.add(velocityY);
+						OSCMessage m = new OSCMessage(OSC_ADDRESS_FLING, args);
+						mOscOut.send(m);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			return super.onFling(event1, event2, velocityX, velocityY);
+		}
+
+		@Override
+		public void onLongPress(MotionEvent event) {
+			// Toast.makeText(TactranceActivity.this, "onLongPress",
+			// Toast.LENGTH_SHORT).show();
+
+			synchronized (TactranceActivity.this) {
+				try {
+					if (mOscOut != null) {
+						float width = mView.getWidth();
+						float height = mView.getHeight();
+
+						ArrayList<Object> args = new ArrayList<Object>();
+						args.add(event.getX() / width);
+						args.add(event.getY() / height);
+						OSCMessage m = new OSCMessage(OSC_ADDRESS_LONG_PRESS,
+								args);
+						mOscOut.send(m);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			super.onLongPress(event);
+		}
+
+		@Override
+		public boolean onScroll(MotionEvent event1, MotionEvent event2,
+				float distanceX, float distanceY) {
+			// Toast.makeText(TactranceActivity.this, "onScroll",
+			// Toast.LENGTH_SHORT).show();
+
+			synchronized (TactranceActivity.this) {
+				try {
+					if (mOscOut != null) {
+						float width = mView.getWidth();
+						float height = mView.getHeight();
+
+						ArrayList<Object> args = new ArrayList<Object>();
+						args.add(event1.getX() / width);
+						args.add(event1.getY() / height);
+						args.add(event2.getX() / width);
+						args.add(event2.getY() / height);
+						float mwh = width > height ? width : height;
+						args.add(distanceX / mwh);
+						args.add(distanceY / mwh);
+						args.add(event2.getPointerCount());
+
+						OSCMessage m = new OSCMessage(OSC_ADDRESS_SCROLL, args);
+						mOscOut.send(m);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			return super.onScroll(event1, event2, distanceX, distanceY);
+		}
+
+		@Override
+		public void onShowPress(MotionEvent event) {
+			// Toast.makeText(TactranceActivity.this, "onShowPress",
+			// Toast.LENGTH_SHORT).show();
+			super.onShowPress(event);
+		}
+
+		@Override
+		public boolean onSingleTapConfirmed(MotionEvent event) {
+			// Toast.makeText(TactranceActivity.this, "onSingleTapConfirmed",
+			// Toast.LENGTH_SHORT).show();
+
+			synchronized (TactranceActivity.this) {
+				try {
+					if (mOscOut != null) {
+						float width = mView.getWidth();
+						float height = mView.getHeight();
+
+						ArrayList<Object> args = new ArrayList<Object>();
+						args.add(event.getX() / width);
+						args.add(event.getY() / height);
+						OSCMessage m = new OSCMessage(OSC_ADDRESS_SINGLE_TAP,
+								args);
+						mOscOut.send(m);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
+			return super.onSingleTapConfirmed(event);
+		}
+
+		@Override
+		public boolean onSingleTapUp(MotionEvent event) {
+			// Toast.makeText(TactranceActivity.this, "onSingleTapUp",
+			// Toast.LENGTH_SHORT).show();
+			return super.onSingleTapUp(event);
 		}
 	};
 }
