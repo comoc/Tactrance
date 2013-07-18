@@ -145,6 +145,7 @@ public class TactranceActivity extends Activity {
 							ArrayList<Object> args = new ArrayList<Object>();
 							args.add(event.getX() / width);
 							args.add(event.getY() / height);
+							args.add(event.getPointerCount());
 							OSCMessage m = new OSCMessage(OSC_ADDRESS_TOUCH,
 									args);
 							mOscOut.send(m);
